@@ -16,21 +16,23 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# 2. List ONLY root and real users (UID 0 or UID >= 1000)
-echo -e "${YELLOW}Searching for available users...${NC}"
-# Filtrage : UID 0 (root) et UID >= 1000 (utilisateurs normaux)
-mapfile -t USERS < <(awk -F: '($3 == 0 || $3 >= 1000) && $1 != "nobody" {print $1}' /etc/passwd)
+# 2. List ALL users from /etc/passwd
+echo -e "${YELLOW}Searching for all users on the system...${NC}"
+# On récupère tous les noms d'utilisateurs (première colonne de /etc/passwd)
+mapfile -t USERS < <(cut -d: -f1 /etc/passwd)
 
 if [ ${#USERS[@]} -eq 0 ]; then
-  echo -e "${RED}No users detected.${NC}"
+  echo -e "${RED}No users found on this system.${NC}"
   exit 1
 fi
 
 echo -e "Available users:"
 for i in "${!USERS[@]}"; do
-  echo -e " [$i] ${USERS[$i]}"
+  # Affichage formaté pour ne pas avoir une liste trop longue d'un coup
+  printf " [%2d] %-20s" "$i" "${USERS[$i]}"
+  if [ $((($i + 1) % 3)) -eq 0 ]; then echo ""; fi
 done
-echo ""
+echo -e "\n"
 
 # 3. Selection
 read -p "Enter the number of the user to reset: " USER_INDEX
@@ -68,7 +70,7 @@ echo "$TARGET_USER:$NEW_PASS" | chpasswd
 if [ $? -eq 0 ]; then
   echo -e "\n${GREEN}Success! Password for '$TARGET_USER' has been reset.${NC}"
 else
-  echo -e "\n${RED}Failed to reset password.${NC}"
+  echo -e "\n${RED}Failed to reset password. Check if the user is locked.${NC}"
   exit 1
 fi
 
