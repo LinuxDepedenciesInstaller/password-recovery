@@ -18,19 +18,23 @@ fi
 
 # 2. List ONLY root and real users (UID 0 or UID >= 1000)
 echo -e "${YELLOW}Searching for available users...${NC}"
-# On filtre pour ne garder que root et les UID >= 1000 (en excluant 'nobody')
+# Filtrage : UID 0 (root) et UID >= 1000 (utilisateurs normaux)
 mapfile -t USERS < <(awk -F: '($3 == 0 || $3 >= 1000) && $1 != "nobody" {print $1}' /etc/passwd)
+
+if [ ${#USERS[@]} -eq 0 ]; then
+  echo -e "${RED}No users detected.${NC}"
+  exit 1
+fi
 
 echo -e "Available users:"
 for i in "${!USERS[@]}"; do
   echo -e " [$i] ${USERS[$i]}"
 done
-
-# 3. Selection de l'utilisateur
 echo ""
+
+# 3. Selection
 read -p "Enter the number of the user to reset: " USER_INDEX
 
-# Vérification de la sélection
 if [[ -z "${USERS[$USER_INDEX]}" ]]; then
   echo -e "${RED}Invalid selection. Exiting.${NC}"
   exit 1
@@ -39,7 +43,7 @@ fi
 TARGET_USER="${USERS[$USER_INDEX]}"
 echo -e "\nTarget user selected: ${GREEN}$TARGET_USER${NC}"
 
-# 4. Saisie du mot de passe
+# 4. Password Input
 echo -en "${YELLOW}Enter new password for $TARGET_USER: ${NC}"
 read -s NEW_PASS
 echo ""
@@ -47,7 +51,7 @@ echo -en "${YELLOW}Confirm new password: ${NC}"
 read -s NEW_PASS_CONFIRM
 echo ""
 
-# 5. Validation et Changement
+# 5. Validation and Reset
 if [ "$NEW_PASS" != "$NEW_PASS_CONFIRM" ]; then
   echo -e "${RED}Error: Passwords do not match.${NC}"
   exit 1
@@ -58,7 +62,7 @@ if [ -z "$NEW_PASS" ]; then
   exit 1
 fi
 
-# Application du mot de passe
+# Apply change
 echo "$TARGET_USER:$NEW_PASS" | chpasswd
 
 if [ $? -eq 0 ]; then
