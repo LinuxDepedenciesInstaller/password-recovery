@@ -17,30 +17,30 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# 2. List available real users (UID >= 1000)
+# 2. List available users (Including root and standard users)
 echo -e "${YELLOW}Searching for available users...${NC}"
-# Get users with UID >= 1000 and exclude 'nobody'
-mapfile -t USERS < <(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd)
+# Filter: UID 0 (root) or UID >= 1000, excluding 'nobody'
+mapfile -t USERS < <(awk -F: '($3 == 0 || $3 >= 1000) && $1 != "nobody" {print $1}' /etc/passwd)
 
 if [ ${#USERS[@]} -eq 0 ]; then
-  echo -e "${RED}No regular users found on this system.${NC}"
-  exit 1
+  echo -e "${RED}No users detected automatically.${NC}"
+  read -p "Please enter the username manually: " TARGET_USER
+else
+  echo -e "Available users:"
+  for i in "${!USERS[@]}"; do
+    echo -e " [$i] ${USERS[$i]}"
+  done
+
+  # 3. Select user
+  read -p "Enter the number of the user to reset: " USER_INDEX
+
+  if [[ -z "${USERS[$USER_INDEX]}" ]]; then
+    echo -e "${RED}Invalid selection. Exiting.${NC}"
+    exit 1
+  fi
+  TARGET_USER="${USERS[$USER_INDEX]}"
 fi
 
-echo -e "Available users:"
-for i in "${!USERS[@]}"; do
-  echo -e " [$i] ${USERS[$i]}"
-done
-
-# 3. Select user
-read -p "Enter the number of the user to reset: " USER_INDEX
-
-if [[ -z "${USERS[$USER_INDEX]}" ]]; then
-  echo -e "${RED}Invalid selection. Exiting.${NC}"
-  exit 1
-fi
-
-TARGET_USER="${USERS[$USER_INDEX]}"
 echo -e "\nTarget user selected: ${GREEN}$TARGET_USER${NC}"
 
 # 4. Input new password
